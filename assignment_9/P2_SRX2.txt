@@ -1,16 +1,19 @@
-## Master DHCP server will receive relayed DHCP on ge-0/0/3
-## Extended DHCP configuration
-/* By Noah */
 version 12.1X47-D15.4;
 system {
-    host-name R2;
+    host-name vSRX_2;
     /* User: root Password: Rootpass */
     root-authentication {
-        encrypted-password "$1$xH9xJoL6$MFOUYnZr4.Qj2NM24XInz/"; ## Rootpass
+        encrypted-password "$1$4TkbZDtp$6E8C6Bg7K6gnHR31XnJjl0";
     }
     services {
         ssh;
         dhcp-local-server {
+            group Net1 {
+                interface ge-0/0/1.0;
+            }
+            group Net2 {
+                apply-groups my-ge-0/0/1-group;
+            }
             group Net3 {
                 interface ge-0/0/2.0;
             }
@@ -20,14 +23,20 @@ system {
         }
     }
 }
-interfaces {
-    ge-0/0/1 {
-        unit 0 {
-            family inet {
-                address 10.10.10.12/24;
+groups {
+    my-ge-0/0/1-group {
+        interfaces {
+            ge-0/0/1 {
+                unit 0 {
+                    family inet {
+                        address 10.10.10.12/24;
+                    }       
+                }
             }
         }
     }
+}
+interfaces {
     ge-0/0/2 {
         unit 0 {
             family inet {
@@ -36,33 +45,37 @@ interfaces {
         }
     }
 	ge-0/0/3 {
-        unit 0 {
-            family inet {
-                address 192.168.13.1/24;
-            }
-        }
-    }
-	ge-0/0/4 {
+		unit 0 {
+			family inet {
+				address 192.168.13.1/24;
+			}
+		}
+	}
+    ge-0/0/4 {
         unit 0 {
             family inet {
                 address 10.56.16.99/22;
             }
         }
     }
+    apply-groups my-ge-0/0/1-group;
 }
 routing-options {
     static {
         route 192.168.10.0/24 next-hop 10.10.10.11;
         route 192.168.11.0/24 next-hop 10.10.10.11;
-		route 0.0.0.0/0 next-hop 10.56.16.1;
+
+		
+
+        route 0.0.0.0/0 next-hop 10.56.16.1;
     }
 }
 security {
     nat {
         /* NAT changes the source address of egress IP packets */
         source {
-            rule-set trust-to-untrust {
-                from zone trust;
+            rule-set myTrust_2-to-untrust {
+                from zone myTrust_2;
                 to zone untrust;
                 rule rule-any-to-any {
                     match {
@@ -79,8 +92,8 @@ security {
             }
         }
     }
-	policies {
-        from-zone trust to-zone trust {
+    policies {
+        from-zone myTrust_2 to-zone myTrust_2 {
             policy default-permit {
                 match {
                     source-address any;
@@ -92,7 +105,7 @@ security {
                 }
             }
         }
-        from-zone untrust to-zone trust {
+        from-zone untrust to-zone myTrust_2 {
             policy default-deny {
                 match {
                     source-address any;
@@ -104,7 +117,7 @@ security {
                 }
             }
         }
-        from-zone trust to-zone untrust {
+        from-zone myTrust_2 to-zone untrust {
             policy internet-access {
                 match {
                     source-address any;
@@ -118,13 +131,12 @@ security {
         }
     }
     zones {
-        security-zone trust {
+        security-zone myTrust_2 {
             interfaces {
                 ge-0/0/1.0 {
                     host-inbound-traffic {
                         system-services {
                             ping;
-                            ssh;
                             dhcp;
                         }
                     }
@@ -133,7 +145,6 @@ security {
                     host-inbound-traffic {
                         system-services {
                             ping;
-                            ssh;
                             dhcp;
                         }
                     }
@@ -142,21 +153,18 @@ security {
                     host-inbound-traffic {
                         system-services {
                             ping;
-                            ssh;
                             dhcp;
                         }
                     }
                 }
-			}
-		}
-		security-zone untrust{		
-			interfaces {	
-				ge-0/0/4.0 {
+            }
+        }
+        security-zone untrust {
+            interfaces {
+                ge-0/0/4.0 {
                     host-inbound-traffic {
                         system-services {
                             ping;
-							ssh;
-                            dhcp;
                         }
                     }
                 }
@@ -166,6 +174,42 @@ security {
 }
 access {
     address-assignment {
+        pool Net1 {
+            family inet {
+                network 192.168.10.0/24;
+                range USERS {
+                    low 192.168.10.15;
+                    high 192.168.10.20;
+                }
+                dhcp-attributes {
+                    maximum-lease-time 600; /* seconds */
+                    name-server {
+                        8.8.8.8;
+                    }
+                    router {
+                        192.168.10.1;
+                    }
+                }
+            }
+        }
+        pool Net2 {
+            family inet {
+                network 192.168.11.0/24;
+                range USERS {
+                    low 192.168.11.22;
+                    high 192.168.11.32;
+                }
+                dhcp-attributes {
+                    maximum-lease-time 600; /* seconds */
+                    name-server {
+                        8.8.8.8;
+                    }
+                    router {
+                        192.168.11.1;
+                    }
+                }
+            }
+        }
         pool Net3 {
             family inet {
                 network 192.168.12.0/24;
