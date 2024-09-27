@@ -33,8 +33,12 @@ interfaces {
 protocols {
     ospf {
         area 0.0.0.0 {
-            interface lo0;
-            interface ge-0/0/3.0;
+            interface lo0 {
+                priority 255;  # Set high priority for DR
+            }
+            interface ge-0/0/3.0 {
+                priority 100;  # Set lower priority for BDR
+            }
             interface ge-0/0/4.0;
         }
     }
@@ -57,36 +61,9 @@ security {
     zones {
         security-zone trust {
             interfaces {
-                lo0 {
-                    host-inbound-traffic {
-                        system-services {
-                            ping;
-                        }
-                        protocols {
-                            ospf;
-                        }
-                    }
-                }
-                ge-0/0/3.0 {
-                    host-inbound-traffic {
-                        system-services {
-                            ping;
-                        }
-                        protocols {
-                            ospf;
-                        }
-                    }
-                }
-                ge-0/0/4.0 {
-                    host-inbound-traffic {
-                        system-services {
-                            ping;
-                        }
-                        protocols {
-                            ospf;
-                        }
-                    }
-                }
+                lo0;
+                ge-0/0/3.0;
+                ge-0/0/4.0;
             }
         }
     }

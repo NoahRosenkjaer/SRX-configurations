@@ -1,0 +1,91 @@
+## Assignment 51 OSPF with multiple subnets.
+version 12.1X47-D15.4;
+system {
+	host-name R3;
+	## Root password
+	 root-authentication {
+        encrypted-password "$1$xH9xJoL6$MFOUYnZr4.Qj2NM24XInz/";
+    }
+}
+interfaces {
+	ge-0/0/1 {
+		unit 0 {
+			family inet {
+				address 10.10.10.3/28;
+			}
+		}
+	}
+	ge-0/0/2 {
+		unit 0 {
+			family inet {
+				address 192.168.12.1/24;
+			}
+		}
+	}
+	lo0 {
+		unit 0 {
+			family inet {
+				address 192.168.100.3/32;
+			}
+		}
+	}
+}
+protocols {
+	ospf {
+		export user-lan-3;
+		area 0.0.0.0 {
+			interface lo0;
+			interface ge-0/0/1;
+			interface ge-0/0/2;
+		}
+	}
+}
+policy-options {
+	policy-statement user-lan-3 {
+		term accp-user-lan-3 {
+			from {
+				route-filter 192.168.12.0/24 exact;
+			}
+			then accept;
+		}
+	}
+}
+security {
+	policies {
+		from-zone trust to-zone trust {
+			policy default-permit {
+				match {
+					source-address any;
+					destination-address any;
+					application any;
+				}
+				then {
+					permit;
+				}
+			}
+		}
+	}
+	zones {
+		security-zone trust {
+			interfaces {
+				ge-0/0/1 {
+					host-inbound-traffic {
+						system-services {
+							ping;
+						}
+						protocols {
+							ospf;
+						}
+					}
+				}
+				ge-0/0/2 {
+					host-inbound-traffic {
+						system-services {
+							ping;
+						}
+					}
+				}
+			}
+		}
+	}
+}
