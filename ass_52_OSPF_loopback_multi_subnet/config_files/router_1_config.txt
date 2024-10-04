@@ -137,6 +137,7 @@ security {
 					host-inbound-traffic {
 						system-services {
 							ping;
+							traceroute;
 						}
 						protocols {
 							ospf;
