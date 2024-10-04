@@ -1,0 +1,174 @@
+## Assignment 51 OSPF with multiple subnets.
+version 12.1X47-D15.4;
+system {
+	host-name R1;
+	## Root password
+	root-authentication {
+		encrypted-password "$1$xH9xJoL6$MFOUYnZr4.Qj2NM24XInz/";
+	}
+}
+interfaces {
+	ge-0/0/3 {
+		unit 0 {
+			family inet {
+				address 10.10.10.1/28;
+			}
+		}
+	}
+	ge-0/0/4 {
+		unit 0 {
+			family inet {
+				address 192.168.10.1/24;
+			}
+		}
+	}
+	ge-0/0/5 {
+		unit 0 {
+			family inet {
+				address 10.56.16.81/22;
+			}
+		}
+	}
+	lo0 {
+		unit 0 {
+			family inet {
+				address 192.168.100.1/32;
+			}
+		}
+	}
+}
+routing-options {
+	static {
+		route 0.0.0.0/0 next-hop 10.56.16.1;
+	}
+}
+protocols {
+	ospf {
+		export user-lan-1;
+		export internet-lan-1;
+		area 0.0.0.0 {
+			interface lo0;
+			interface ge-0/0/3;
+			interface ge-0/0/4;
+		}
+	}
+}
+policy-options {
+	policy-statement user-lan-1 {
+		term accp-user-lan-1 {
+			from {
+				route-filter 192.168.10.0/24 exact;
+			}
+			then accept;
+		}
+	}
+	policy-statement internet-lan-1 {
+		term accp-internet-lan-1 {
+			from {
+				protocol static;
+				route-filter 0.0.0.0/0 exact;
+			}
+			then accept;
+		}
+	}
+}
+security {
+	nat {
+		source {
+			rule-set trust-to-untrust {
+				from zone trust;
+				to zone untrust;
+				rule rule-any-to-any {
+					match {
+						source-address 0.0.0.0/0;
+						destination-address 0.0.0.0/0;
+					}
+					then {
+						source-nat {
+							interface;
+						}
+					}
+				}
+			}
+		}
+	}
+	policies {
+		from-zone trust to-zone trust {
+			policy default-permit {
+				match {
+					source-address any;
+					destination-address any;
+					application any;
+				}
+				then {
+					permit;
+				}
+			}
+		}
+		from-zone untrust to-zone trust {
+			policy default-permit {
+				match {
+					source-address any;
+					destination-address any;
+					application any;
+				}
+				then {
+					deny;
+				}
+			}
+		}
+		from-zone trust to-zone untrust {
+			policy default-permit {
+				match {
+					source-address any;
+					destination-address any;
+					application any;
+				}
+				then {
+					permit;
+				}
+			}
+		}
+	}
+	zones {
+		security-zone trust {
+			interfaces {
+				ge-0/0/3 {
+					host-inbound-traffic {
+						system-services {
+							ping;
+						}
+						protocols {
+							ospf;
+						}
+					}
+				}
+				ge-0/0/4 {
+					host-inbound-traffic {
+						system-services {
+							ping;
+						}
+					}
+				}
+				lo0{
+                    host-inbound-traffic {
+                        protocols {
+                            ospf;
+                        }
+                    }
+                }
+			}
+		}
+		security-zone untrust {
+			interfaces {
+				ge-0/0/5 {
+					host-inbound-traffic {
+						system-services {
+							ping;
+						}
+					}
+				}
+			}
+		}
+	}
+}
